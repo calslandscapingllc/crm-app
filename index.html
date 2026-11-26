@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cal's Route & Field CRM</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBbkEIfXrr0nB1TYu_FBuK-tni-wdIYfOI&libraries=places"></script>
     <style>
         :root {
             --primary: #007bff;
@@ -405,6 +406,24 @@
     // Initial Load
     renderClients();
 </script>
+function initAutocomplete() {
+    const addressInput = document.getElementById('clientaddress');
+    if (!addressInput) return;
 
+    const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+      types: ['address'],
+      componentRestrictions: { country: 'us' },
+      fields: ['formatted_address', 'geometry']
+    });
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place.formatted_address) {
+        addressInput.value = place.formatted_address;
+      }
+    });
+  }
+
+  window.addEventListener('load', initAutocomplete);
 </body>
 </html>
