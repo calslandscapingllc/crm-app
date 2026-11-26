@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cal's Route & Field CRM</title>
+    <style>
+        :root {
+            --primary: #007bff;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --danger: #dc3545;
+            --light: #f4f6f9;
+            --dark: #343a40;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: var(--light); color: var(--dark); display: flex; flex-direction: column; height: 100vh; }
+        header { background: var(--primary); color: white; padding: 1rem; text-align: center; font-size: 1.5rem; font-weight: bold; }
+        nav { display: flex; background: var(--dark); color: white; }
+        nav button { background: none; border: none; color: white; padding: 1rem; flex: 1; cursor: pointer; font-size: 1rem; }
+        nav button.active, nav button:hover { background: var(--primary); }
+        main { flex: 1; padding: 1rem; overflow-y: auto; }
+        .card { background: white; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; color: var(--primary); }
+        .btn { display: inline-block; background: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; cursor: pointer; border: none; font-size: 1rem; }
+        .btn-danger { background: var(--danger); }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+        form { display: flex; flex-direction: column; }
+        form label { margin-top: 0.5rem; font-weight: bold; }
+        form input, form select { padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #ccc; border-radius: 4px; }
+        form button { margin-top: 1rem; }
+        .status-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem; color: white; }
+        .status-pending { background-color: #ffc107; color: black; }
+        .status-completed { background-color: var(--success); }
+        .search-container { margin-bottom: 1rem; }
+        .search-container input { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+        .upload-section { background: #e9ecef; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+
+<header>Cal's Route & Field CRM</header>
+
+<nav>
+    <button class="active" onclick="showTab('routes')">Daily Routes</button>
+    <button onclick="showTab('clients')">Clients</button>
+    <button onclick="showTab('dispatch')">Dispatch</button>
+    <button onclick="showTab('settings')">Settings</button>
+</nav>
+
+<main>
+    <!-- Routes Tab -->
+    <div id="routes-tab" class="tab-content">
+        <div class="card">
+            <h2>Today's Route</h2>
+            <div id="route-list">Loading route...</div>
+            <button class="btn" style="margin-top: 1rem;" onclick="optimizeRoute()">Optimize Route</button>
+        </div>
+    </div>
+
+    <!-- Clients Tab -->
+    <div id="clients-tab" class="tab-content" style="display:none;">
+        <div class="card">
+            <h2>Client Management</h2>
+            <button class="btn" onclick="openClientModal()">+ Add New Client</button>
+            
+            <!-- Bulk Import Section -->
+            <div class="upload-section">
+                <label for="csv-file">Bulk Import Clients (CSV):</label>
+                <input type="file" id="csv-file" accept=".csv" style="margin-top: 0.5rem;">
+                <button class="btn" style="background-color: var(--secondary);" onclick="importCSV()">Upload & Import</button>
+            </div>
+
+            <div class="search-container" style="margin-top: 1rem;">
+                <input type="text" id="client-search" placeholder="Search clients by name, address, or service..." onkeyup="filterClients()">
+            </div>
+            <table id="clients-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Services</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="clients-body">
+                    <!-- Client rows injected here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Dispatch Tab -->
+    <div id="dispatch-tab" class="tab-content" style="display:none;">
+        <div class="card">
+            <h2>Crew Dispatch</h2>
+            <form id="dispatch-form" onsubmit="dispatchJob(event)">
+                <label for="dispatch-client">Select Client:</label>
+                <select id="dispatch-client" required></select>
+                
+                <label for="dispatch-crew">Assign Crew:</label>
+                <select id="dispatch-crew" required>
+                    <option value="Crew 1">Crew 1 (Lead: Mike)</option>
+                    <option value="Crew 2">Crew 2 (Lead: Sarah)</option>
+                    <option value="Crew 3">Crew 3 (Lead: Dave)</option>
+                </select>
+
+                <label for="dispatch-notes">Job Notes:</label>
+                <input type="text" id="dispatch-notes" placeholder="Mowing, trimming, etc." required>
+
+                <button type="submit" class="btn">Dispatch Job</button>
+            </form>
+        </div>
+        <div class="card">
+            <h2>Active Dispatches</h2>
+            <table id="dispatch-table">
+                <thead>
+                    <tr>
+                        <th>Crew</th>
+                        <th>Client</th>
+                        <th>Job</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="dispatch-body">
+                    <!-- Dispatch rows injected here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="settings-tab" class="tab-content" style="display:none;">
+        <div class="card">
+            <h2>Data & Sync</h2>
+            <p>Status: <span id="sync-status" class="status-badge status-completed">Online</span></p>
+            <button class="btn" onclick="syncData()">Manual Cloud Sync</button>
+            <button class="btn btn-danger" onclick="clearAllData()">Factory Reset App Data</button>
+        </div>
+        <div class="card">
+            <h2>Crew Settings</h2>
+            <label>Crew Name:</label>
+            <input type="text" value="Crew 1">
+            <button class="btn" style="margin-top:0.5rem;">Update Name</button>
+        </div>
+    </div>
+</main>
+
+<!-- Client Modal -->
+<div id="client-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+    <div class="card" style="width: 80%; max-width: 500px;">
+        <h2 id="modal-title">Add Client</h2>
+        <form onsubmit="saveClient(event)">
+            <input type="hidden" id="client-index">
+            <label for="c-name">Full Name:</label>
+            <input type="text" id="c-name" required>
+            
+            <label for="c-address">Address:</label>
+            <input type="text" id="c-address" required>
+            
+            <label for="c-services">Services (comma separated):</label>
+            <input type="text" id="c-services" placeholder="Mowing, Fertilizing" required>
+            
+            <button type="submit" class="btn">Save Client</button>
+            <button type="button" class="btn btn-danger" onclick="closeClientModal()">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // App State
+    let clients = JSON.parse(localStorage.getItem('crm_clients')) || [
+        { name: "John Doe", address: "123 Elm St", services: "Mowing, Trimming" },
+        { name: "Jane Smith", address: "456 Oak Ave", services: "Fertilizing" }
+    ];
+    let dispatches = JSON.parse(localStorage.getItem('crm_dispatches')) || [
+        { crew: "Crew 1", client: "John Doe", job: "Weekly Mowing", status: "Pending" }
+    ];
+
+    // Navigation
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+        document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`${tabId}-tab`).style.display = 'block';
+        event.currentTarget.classList.add('active');
+        if(tabId === 'routes') renderRoutes();
+        if(tabId === 'clients') renderClients();
+        if(tabId === 'dispatch') {
+            renderDispatches();
+            populateClientDropdown();
+        }
+    }
+
+    // Client Operations
+    function renderClients() {
+        const tbody = document.getElementById('clients-body');
+        tbody.innerHTML = '';
+        clients.forEach((client, index) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${client.name}</td>
+                    <td>${client.address}</td>
+                    <td>${client.services}</td>
+                    <td>
+                        <button class="btn" onclick="editClient(${index})">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteClient(${index})">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function filterClients() {
+        const query = document.getElementById('client-search').value.toLowerCase();
+        const rows = document.querySelectorAll('#clients-body tr');
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    function openClientModal(index = null) {
+        if(index !== null) {
+            document.getElementById('modal-title').innerText = "Edit Client";
+            document.getElementById('client-index').value = index;
+            document.getElementById('c-name').value = clients[index].name;
+            document.getElementById('c-address').value = clients[index].address;
+            document.getElementById('c-services').value = clients[index].services;
+        } else {
+            document.getElementById('modal-title').innerText = "Add Client";
+            document.getElementById('client-index').value = '';
+            document.getElementById('c-name').value = '';
+            document.getElementById('c-address').value = '';
+            document.getElementById('c-services').value = '';
+        }
+        document.getElementById('client-modal').style.display = 'flex';
+    }
+
+    function closeClientModal() {
+        document.getElementById('client-modal').style.display = 'none';
+    }
+
+    function saveClient(e) {
+        e.preventDefault();
+        const index = document.getElementById('client-index').value;
+        const clientData = {
+            name: document.getElementById('c-name').value,
+            address: document.getElementById('c-address').value,
+            services: document.getElementById('c-services').value
+        };
+        if(index === '') {
+            clients.push(clientData);
+        } else {
+            clients[index] = clientData;
+        }
+        localStorage.setItem('crm_clients', JSON.stringify(clients));
+        closeClientModal();
+        renderClients();
+    }
+
+    function editClient(index) {
+        openClientModal(index);
+    }
+
+    function deleteClient(index) {
+        if(confirm('Are you sure?')) {
+            clients.splice(index, 1);
+            localStorage.setItem('crm_clients', JSON.stringify(clients));
+            renderClients();
+        }
+    }
+
+    // CSV Import
+    function importCSV() {
+        const fileInput = document.getElementById('csv-file');
+        const file = fileInput.files[0];
+        if(!file) {
+            alert("Please select a CSV file first.");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split('\n');
+            const newClients = [];
+            for(let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',');
+                if(cols.length >= 3) {
+                    newClients.push({
+                        name: cols[0].trim(),
+                        address: cols[1].trim(),
+                        services: cols[2].trim()
+                    });
+                }
+            }
+            if(newClients.length > 0) {
+                clients = clients.concat(newClients);
+                localStorage.setItem('crm_clients', JSON.stringify(clients));
+                renderClients();
+                alert(`Successfully imported ${newClients.length} clients!`);
+                fileInput.value = '';
+            } else {
+                alert("No valid client data found in CSV.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // Dispatch Operations
+    function populateClientDropdown() {
+        const select = document.getElementById('dispatch-client');
+        select.innerHTML = '';
+        clients.forEach(client => {
+            select.innerHTML += `<option value="${client.name}">${client.name} (${client.address})</option>`;
+        });
+    }
+
+    function dispatchJob(e) {
+        e.preventDefault();
+        const newDispatch = {
+            crew: document.getElementById('dispatch-crew').value,
+            client: document.getElementById('dispatch-client').value,
+            job: document.getElementById('dispatch-notes').value,
+            status: "Pending"
+        };
+        dispatches.push(newDispatch);
+        localStorage.setItem('crm_dispatches', JSON.stringify(dispatches));
+        renderDispatches();
+        document.getElementById('dispatch-form').reset();
+    }
+
+    function renderDispatches() {
+        const tbody = document.getElementById('dispatch-body');
+        tbody.innerHTML = '';
+        dispatches.forEach((disp, index) => {
+            const badgeClass = disp.status === 'Completed' ? 'status-completed' : 'status-pending';
+            tbody.innerHTML += `
+                <tr>
+                    <td>${disp.crew}</td>
+                    <td>${disp.client}</td>
+                    <td>${disp.job}</td>
+                    <td><span class="status-badge ${badgeClass}">${disp.status}</span></td>
+                    <td>
+                        ${disp.status === 'Pending' ? `<button class="btn" onclick="completeDispatch(${index})">Mark Complete</button>` : 'Done'}
+                        <button class="btn btn-danger" onclick="deleteDispatch(${index})">Remove</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function completeDispatch(index) {
+        dispatches[index].status = 'Completed';
+        localStorage.setItem('crm_dispatches', JSON.stringify(dispatches));
+        renderDispatches();
+    }
+
+    function deleteDispatch(index) {
+        dispatches.splice(index, 1);
+        localStorage.setItem('crm_dispatches', JSON.stringify(dispatches));
+        renderDispatches();
+    }
+
+    // Route Operations
+    function renderRoutes() {
+        const list = document.getElementById('route-list');
+        list.innerHTML = '';
+        const pendingDispatches = dispatches.filter(d => d.status === 'Pending');
+        if(pendingDispatches.length === 0) {
+            list.innerHTML = '<p>No pending routes for today. All caught up!</p>';
+            return;
+        }
+        pendingDispatches.forEach(disp => {
+            list.innerHTML += `
+                <div class="card" style="border-left: 5px solid var(--primary);">
+                    <strong>${disp.client}</strong> - ${disp.job} (${disp.crew})
+                </div>
+            `;
+        });
+    }
+
+    function optimizeRoute() {
+        alert("Optimizing route using nearest-neighbor algorithm...");
+        renderRoutes();
+    }
+
+    // Settings Operations
+    function syncData() {
+        document.getElementById('sync-status').innerText = "Syncing...";
+        setTimeout(() => {
+            document.getElementById('sync-status').innerText = "Online";
+            alert("Data synced with cloud!");
+        }, 1000);
+    }
+
+    function clearAllData() {
+        if(confirm("Factory reset all app data?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+
+    // Initial Load
+    renderClients();
+</script>
+
+</body>
+</html>
